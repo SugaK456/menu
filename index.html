@@ -1,40 +1,17 @@
 <!DOCTYPE html>
 <html lang="it" class="h-full">
 <head>
-
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1B365D">
-<link rel="apple-touch-icon" href="icon-192.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🍽️ Tavola & Memo - Gestione Pasti e Note</title>
     
-    <!-- PWA & Mobile Meta Tags -->
-    <meta name="theme-color" content="#0b192c">
+    <!-- PWA & Mobile Meta Tags (Corretti) -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1B365D">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Tavola & Memo">
-    <link rel="apple-touch-icon" href="https://placehold.co/192x192/0b192c/ffffff?text=🍽️">
-    <link rel="manifest" href="data:application/manifest+json;charset=utf-8,{
-        %22name%22: %22Tavola & Memo%22,
-        %22short_name%22: %22TavolaMemo%22,
-        %22start_url%22: %22./%22,
-        %22display%22: %22standalone%22,
-        %22background_color%22: %22#f0f4f8%22,
-        %22theme_color%22: %22#0b192c%22,
-        %22icons%22: [
-            {
-                %22src%22: %22https://placehold.co/192x192/0b192c/ffffff?text=🍽️%22,
-                %22sizes%22: %22192x192%22,
-                %22type%22: %22image/png%22
-            },
-            {
-                %22src%22: %22https://placehold.co/512x512/0b192c/ffffff?text=🍽️%22,
-                %22sizes%22: %22512x512%22,
-                %22type%22: %22image/png%22
-            }
-        ]
-    }">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -68,6 +45,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
         body { font-family: 'Inter', sans-serif; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -75,18 +53,18 @@
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         .tab-transition { transition: all 0.25s ease-in-out; }
-
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
-        .then(() => console.log('Service Worker registrato'))
-        .catch(err => console.log('Errore SW:', err));
-    });
-  }
-</script>
-
     </style>
+
+    <!-- Registrazione Service Worker per l'installazione -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then(() => console.log('Service Worker registrato'))
+            .catch(err => console.log('Errore SW:', err));
+        });
+      }
+    </script>
 </head>
 <body class="bg-navy-50 text-navy-900 h-full flex flex-col antialiased selection:bg-terracotta-100 selection:text-terracotta-700">
 
@@ -854,7 +832,7 @@
 
             // Trigger Browser Notification API if permitted
             if (window.Notification && Notification.permission === "granted") {
-                new Notification(title, { body: text, icon: 'https://placehold.co/192x192/0b192c/ffffff?text=🍽️' });
+                new Notification(title, { body: text, icon: 'icon-192.png' });
             }
         }
 
