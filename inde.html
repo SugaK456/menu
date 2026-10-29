@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="it" class="h-full">
+<head>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1B365D">
+<link rel="apple-touch-icon" href="icon-192.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍽️ Tavola & Memo - Gestione Pasti e Note</title>
+    
+    <!-- PWA & Mobile Meta Tags -->
+    <meta name="theme-color" content="#0b192c">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Tavola & Memo">
+    <link rel="apple-touch-icon" href="https://placehold.co/192x192/0b192c/ffffff?text=🍽️">
+    <link rel="manifest" href="data:application/manifest+json;charset=utf-8,{
+        %22name%22: %22Tavola & Memo%22,
+        %22short_name%22: %22TavolaMemo%22,
+        %22start_url%22: %22./%22,
+        %22display%22: %22standalone%22,
+        %22background_color%22: %22#f0f4f8%22,
+        %22theme_color%22: %22#0b192c%22,
+        %22icons%22: [
+            {
+                %22src%22: %22https://placehold.co/192x192/0b192c/ffffff?text=🍽️%22,
+                %22sizes%22: %22192x192%22,
+                %22type%22: %22image/png%22
+            },
+            {
+                %22src%22: %22https://placehold.co/512x512/0b192c/ffffff?text=🍽️%22,
+                %22sizes%22: %22512x512%22,
+                %22type%22: %22image/png%22
+            }
+        ]
+    }">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: {
+                            50: '#f0f4f8',
+                            100: '#d9e2ec',
+                            600: '#243b53',
+                            800: '#102a43',
+                            900: '#0b192c',
+                        },
+                        terracotta: {
+                            100: '#fbe8e5',
+                            500: '#d97706',
+                            600: '#c25e38',
+                            700: '#a34722',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .tab-transition { transition: all 0.25s ease-in-out; }
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(() => console.log('Service Worker registrato'))
+        .catch(err => console.log('Errore SW:', err));
+    });
+  }
+</script>
+
+    </style>
+</head>
+<body class="bg-navy-50 text-navy-900 h-full flex flex-col antialiased selection:bg-terracotta-100 selection:text-terracotta-700">
+
+    <!-- LOGIN SCREEN OVERLAY -->
+    <div id="login-overlay" class="fixed inset-0 z-50 bg-navy-900 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 text-center transform transition-all">
+            <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-terracotta-600 to-terracotta-700 flex items-center justify-center mx-auto mb-6 text-4xl shadow-lg shadow-terracotta-600/30">
+                🍽️
+            </div>
+            <h2 class="text-2xl font-bold text-navy-900 mb-2">Benvenuto in Tavola & Memo</h2>
+            <p class="text-xs text-slate-500 mb-6">Inserisci il tuo nome per accedere. Digita <strong class="text-terracotta-600">Vito</strong> per il controllo proprietario o <strong class="text-navy-800">David</strong> per la modalità ospite.</p>
+            
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
+                        <i class="fa-solid fa-user"></i>
+                    </span>
+                    <input type="text" id="login-name-input" placeholder="Il tuo nome (es. Vito o David)" required class="w-full bg-slate-50 border border-slate-200 focus:border-terracotta-600 focus:bg-white rounded-2xl pl-11 pr-4 py-3.5 text-sm outline-none transition font-medium">
+                </div>
+                <button type="submit" class="w-full bg-gradient-to-r from-terracotta-600 to-terracotta-700 hover:from-terracotta-700 hover:to-terracotta-800 text-white font-semibold py-3.5 rounded-2xl shadow-lg shadow-terracotta-600/20 transition flex items-center justify-center gap-2 text-sm">
+                    <span>Accedi all'App</span> <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </form>
+
+            <div class="mt-6 pt-6 border-t border-slate-100 text-[11px] text-slate-400">
+                📱 Installabile come PWA su Desktop e Android
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none max-w-sm w-full px-4"></div>
+
+    <!-- Custom Modal -->
+    <div id="custom-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all scale-95 opacity-0" id="modal-content">
+            <div class="flex items-center gap-3 mb-4">
+                <div id="modal-icon" class="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0"></div>
+                <div>
+                    <h3 id="modal-title" class="text-lg font-bold text-navy-900"></h3>
+                    <p class="text-xs text-slate-500" id="modal-subtitle"></p>
+                </div>
+            </div>
+            <div id="modal-body" class="mb-6 text-sm text-slate-600"></div>
+            <div class="flex justify-end gap-3" id="modal-actions">
+                <button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">Annulla</button>
+                <button id="modal-confirm-btn" class="px-5 py-2 text-sm font-medium bg-terracotta-600 hover:bg-terracotta-700 text-white rounded-xl shadow-md transition">Conferma</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header / Navigation -->
+    <header class="bg-navy-900 text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-terracotta-600 to-terracotta-700 flex items-center justify-center shadow-md text-2xl">
+                    🍽️
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">Tavola & Memo</h1>
+                    <p class="text-xs text-slate-300" id="header-user-subtitle">Pasti, preparazioni e spesa</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 sm:gap-4">
+                <!-- User badge & Switch user button -->
+                <div class="bg-navy-800 border border-navy-600/60 rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs">
+                    <span id="current-user-display-badge" class="font-bold flex items-center gap-1.5 text-slate-200"></span>
+                    <button onclick="logoutUser()" title="Cambia utente" class="text-slate-400 hover:text-terracotta-500 transition ml-1 pl-2 border-l border-navy-600">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+
+                <!-- Notification Bell Button -->
+                <div class="relative">
+                    <button onclick="toggleNotificationPanel()" class="w-10 h-10 rounded-xl bg-navy-800 border border-navy-600/60 hover:bg-navy-600/60 flex items-center justify-center transition relative text-slate-200">
+                        <i class="fa-regular fa-bell text-lg"></i>
+                        <span id="notif-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-terracotta-600 text-white rounded-full text-[10px] font-bold flex items-center justify-center shadow hidden">0</span>
+                    </button>
+
+                    <div id="notification-panel" class="absolute right-0 mt-2 w-80 sm:w-96 bg-white text-navy-900 rounded-2xl shadow-2xl border border-slate-100 hidden z-40 overflow-hidden transform origin-top-right transition-all">
+                        <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                            <h4 class="font-bold text-sm flex items-center gap-2"><i class="fa-solid fa-bell text-terracotta-600"></i> Centro Notifiche</h4>
+                            <button onclick="clearNotifications()" class="text-xs text-slate-500 hover:text-terracotta-600 font-medium">Segna lette</button>
+                        </div>
+                        <div id="notification-list" class="max-h-80 overflow-y-auto divide-y divide-slate-100"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main App Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full flex flex-col gap-6">
+        
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+            <div class="flex bg-slate-100 p-1.5 rounded-xl gap-1">
+                <button onclick="switchTab('calendar')" id="tab-calendar-btn" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold tab-transition flex items-center justify-center gap-2">
+                    <span>🗓️</span> Calendario Pasti
+                </button>
+                <button onclick="switchTab('memos')" id="tab-memos-btn" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold tab-transition flex items-center justify-center gap-2">
+                    <span>📝</span> Memo & Spesa
+                </button>
+            </div>
+
+            <div class="flex items-center justify-between md:justify-end gap-3 text-xs">
+                <div id="role-status-banner" class="px-3 py-1.5 rounded-xl font-medium border flex items-center gap-2"></div>
+                <div class="text-slate-500 font-medium bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+                    <i class="fa-regular fa-calendar-days text-terracotta-600 mr-1.5"></i> <span id="current-date-label"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 1: CALENDAR VIEW -->
+        <div id="view-calendar" class="space-y-6">
+            <div class="flex items-center justify-between bg-white px-6 py-4 rounded-2xl shadow-sm border border-slate-100">
+                <button onclick="changeWeek(-1)" class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-terracotta-100 hover:text-terracotta-700 flex items-center justify-center transition text-slate-700">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <div class="text-center">
+                    <h2 id="week-range-label" class="text-base sm:text-lg font-bold text-navy-900">Settimana</h2>
+                    <p class="text-xs text-slate-500">I pranzi non programmati o assenti vengono nascosti automaticamente</p>
+                </div>
+                <button onclick="changeWeek(1)" class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-terracotta-100 hover:text-terracotta-700 flex items-center justify-center transition text-slate-700">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+
+            <div id="calendar-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4"></div>
+        </div>
+
+        <!-- TAB 2: MEMOS & GROCERIES VIEW -->
+        <div id="view-memos" class="space-y-6 hidden">
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between gap-2 overflow-x-auto" id="memo-day-selector"></div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[520px]">
+                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-amber-50 text-terracotta-600 flex items-center justify-center text-lg">🍳</div>
+                            <div>
+                                <h3 class="font-bold text-navy-900">Preparazioni & Note</h3>
+                                <p class="text-xs text-slate-500">Cosa preparare per pranzo/cena</p>
+                            </div>
+                        </div>
+                        <span id="memo-date-badge" class="text-xs font-semibold bg-navy-50 text-navy-800 px-2.5 py-1 rounded-lg"></span>
+                    </div>
+
+                    <form onsubmit="addMemoItem(event, 'prep')" class="flex gap-2 mb-4">
+                        <input type="text" id="new-prep-input" placeholder="Es. Scongelare la carne, mettere il vino... 🍷" class="flex-1 bg-slate-50 border border-slate-200 focus:border-terracotta-600 focus:bg-white rounded-xl px-4 py-2.5 text-sm outline-none transition">
+                        <button type="submit" class="bg-terracotta-600 hover:bg-terracotta-700 text-white px-5 py-2.5 rounded-xl font-medium text-sm transition shadow-sm flex items-center gap-1.5 shrink-0">
+                            <i class="fa-solid fa-plus"></i> Aggiungi
+                        </button>
+                    </form>
+
+                    <div id="prep-list-container" class="flex-1 overflow-y-auto space-y-2.5 pr-1"></div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[520px]">
+                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg">🛒</div>
+                            <div>
+                                <h3 class="font-bold text-navy-900">Compere & Spesa</h3>
+                                <p class="text-xs text-slate-500">Ingredienti e prodotti da comprare</p>
+                            </div>
+                        </div>
+                        <button onclick="clearCompletedGroceries()" class="text-xs text-slate-400 hover:text-terracotta-600 font-medium transition">Elimina spuntati</button>
+                    </div>
+
+                    <form onsubmit="addMemoItem(event, 'grocery')" class="flex gap-2 mb-4">
+                        <input type="text" id="new-grocery-input" placeholder="Es. Pomodori, Basilico fresco 🧀" class="flex-1 bg-slate-50 border border-slate-200 focus:border-terracotta-600 focus:bg-white rounded-xl px-4 py-2.5 text-sm outline-none transition">
+                        <button type="submit" class="bg-navy-900 hover:bg-navy-800 text-white px-5 py-2.5 rounded-xl font-medium text-sm transition shadow-sm flex items-center gap-1.5 shrink-0">
+                            <i class="fa-solid fa-plus"></i> Aggiungi
+                        </button>
+                    </form>
+
+                    <div id="grocery-list-container" class="flex-1 overflow-y-auto space-y-2.5 pr-1"></div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="mt-auto py-6 border-t border-slate-200 bg-white/50 text-center text-xs text-slate-500">
+        <p>Tavola & Memo • Ottimizzato per PWA (Android & Desktop)</p>
+    </footer>
+
+    <!-- Modal for Editing Meal -->
+    <div id="meal-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2.5">
+                    <span id="modal-meal-emoji-preview" class="text-2xl">🍽️</span>
+                    <div>
+                        <h3 class="font-bold text-navy-900 text-base" id="modal-meal-title">Modifica Pasto</h3>
+                        <p class="text-xs text-slate-500" id="modal-meal-subtitle"></p>
+                    </div>
+                </div>
+                <button onclick="closeMealModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="meal-form" onsubmit="saveMeal(event)" class="space-y-4">
+                <input type="hidden" id="meal-day-key">
+                <input type="hidden" id="meal-type">
+
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div class="sm:col-span-3">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Nome del piatto o menù (lascia vuoto per nascondere il pasto)</label>
+                        <input type="text" id="meal-name-input" placeholder="Es. Risotto ai funghi 🍄 (oppure vuoto)" class="w-full bg-slate-50 border border-slate-200 focus:border-terracotta-600 focus:bg-white rounded-xl px-4 py-2.5 text-sm outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Emoji</label>
+                        <input type="text" id="meal-emoji-input" placeholder="🍲" maxlength="4" class="w-full bg-slate-50 border border-slate-200 focus:border-terracotta-600 focus:bg-white rounded-xl px-3 py-2.5 text-center text-sm outline-none transition">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Dettagli o note di preparazione</label>
+                    <textarea id="meal-notes-input" rows="3" placeholder="Aggiungi dettagli..." class="w-full bg-slate-50 border border-slate-200 focus:border-terracotta-600 focus:bg-white rounded-xl px-4 py-2.5 text-sm outline-none transition resize-none"></textarea>
+                </div>
+
+                <div class="flex items-center justify-between pt-2">
+                    <button type="button" id="meal-delete-btn" onclick="removeMeal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition hidden flex items-center gap-1.5">
+                        <i class="fa-solid fa-trash-can"></i> Rimuovi Pasto
+                    </button>
+                    <div class="flex gap-2 ml-auto">
+                        <button type="button" onclick="closeMealModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">Annulla</button>
+                        <button type="submit" class="px-5 py-2 text-sm font-medium bg-terracotta-600 hover:bg-terracotta-700 text-white rounded-xl shadow-md transition">Salva Pasto</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Application JavaScript Logic -->
+    <script>
+        let currentUserName = '';
+        let currentUserRole = 'guest'; // 'owner' or 'guest'
+        let currentTab = 'calendar';
+        let currentWeekOffset = 0;
+        let selectedMemoDateKey = getFormattedDate(new Date());
+
+        let appData = {
+            meals: {},
+            memos: {},
+            notifications: []
+        };
+
+        function initStorage() {
+            const saved = localStorage.getItem('tavola_memo_data_v1');
+            if (saved) {
+                try {
+                    appData = JSON.parse(saved);
+                } catch(e) { console.error(e); }
+            }
+        }
+
+        function saveStorage() {
+            localStorage.setItem('tavola_memo_data_v1', JSON.stringify(appData));
+            updateNotificationBadge();
+        }
+
+        // --- Authentication Check ---
+        function checkExistingAuth() {
+            const savedName = localStorage.getItem('tavola_memo_username');
+            if (savedName) {
+                loginWithName(savedName, false);
+            } else {
+                document.getElementById('login-overlay').classList.remove('hidden');
+            }
+        }
+
+        function handleLogin(event) {
+            event.preventDefault();
+            const nameInput = document.getElementById('login-name-input').value.trim();
+            if (!nameInput) return;
+            loginWithName(nameInput, true);
+        }
+
+        function loginWithName(name, showWelcomeToast = false) {
+            currentUserName = name;
+            localStorage.setItem('tavola_memo_username', name);
+
+            // If name is Vito (case insensitive), set owner role. Otherwise guest.
+            if (name.toLowerCase() === 'vito') {
+                currentUserRole = 'owner';
+            } else {
+                currentUserRole = 'guest';
+            }
+
+            document.getElementById('login-overlay').classList.add('hidden');
+            
+            // Update Header Display
+            const badge = document.getElementById('current-user-display-badge');
+            if (currentUserRole === 'owner') {
+                badge.innerHTML = `<i class="fa-solid fa-crown text-amber-400"></i> ${escapeHtml(currentUserName)} (Proprietario)`;
+            } else {
+                badge.innerHTML = `<i class="fa-solid fa-user text-sky-300"></i> ${escapeHtml(currentUserName)} (Ospite)`;
+            }
+
+            updateRoleBanner();
+            if (showWelcomeToast) {
+                showToast(`Benvenuto, ${currentUserName}! Accesso effettuato come ${currentUserRole === 'owner' ? 'Proprietario' : 'Ospite'}.`, 'success');
+            }
+
+            renderCalendar();
+            renderMemoView();
+        }
+
+        function logoutUser() {
+            localStorage.removeItem('tavola_memo_username');
+            document.getElementById('login-name-input').value = '';
+            document.getElementById('login-overlay').classList.remove('hidden');
+            showToast('Disconnessione effettuata.', 'info');
+        }
+
+        function updateRoleBanner() {
+            const banner = document.getElementById('role-status-banner');
+            if (currentUserRole === 'owner') {
+                banner.className = 'px-3 py-1.5 rounded-xl font-medium border bg-amber-50 text-amber-800 border-amber-200 flex items-center gap-2';
+                banner.innerHTML = '<i class="fa-solid fa-crown text-amber-600"></i> Proprietario (Controllo Calendario & Memo)';
+            } else {
+                banner.className = 'px-3 py-1.5 rounded-xl font-medium border bg-blue-50 text-blue-800 border-blue-200 flex items-center gap-2';
+                banner.innerHTML = '<i class="fa-solid fa-user-group text-blue-600"></i> Ospite (Visualizzazione pasti, accesso a note e spesa)';
+            }
+        }
+
+        // --- Date Utilities ---
+        function getFormattedDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function getWeekDays(offset = 0) {
+            const curr = new Date();
+            const firstdayOfWeek = curr.getDate() - curr.getDay() + (curr.getDay() === 0 ? -6 : 1) + (offset * 7);
+            const monday = new Date(curr.setDate(firstdayOfWeek));
+            
+            const weekDays = [];
+            for (let i = 0; i < 7; i++) {
+                const day = new Date(monday);
+                day.setDate(monday.getDate() + i);
+                weekDays.push(day);
+            }
+            return weekDays;
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            const calendarEl = document.getElementById('view-calendar');
+            const memosEl = document.getElementById('view-memos');
+            const calBtn = document.getElementById('tab-calendar-btn');
+            const memoBtn = document.getElementById('tab-memos-btn');
+
+            if (tab === 'calendar') {
+                calendarEl.classList.remove('hidden');
+                memosEl.classList.add('hidden');
+                calBtn.className = 'flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold tab-transition flex items-center justify-center gap-2 bg-white text-navy-900 shadow-sm';
+                memoBtn.className = 'flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold tab-transition flex items-center justify-center gap-2 text-slate-600 hover:text-navy-900';
+                renderCalendar();
+            } else {
+                calendarEl.classList.add('hidden');
+                memosEl.classList.remove('hidden');
+                memoBtn.className = 'flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold tab-transition flex items-center justify-center gap-2 bg-white text-navy-900 shadow-sm';
+                calBtn.className = 'flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold tab-transition flex items-center justify-center gap-2 text-slate-600 hover:text-navy-900';
+                renderMemoView();
+            }
+        }
+
+        function changeWeek(direction) {
+            currentWeekOffset += direction;
+            renderCalendar();
+        }
+
+        // --- Render Calendar (Smart Hiding of empty lunches) ---
+        function renderCalendar() {
+            const weekDays = getWeekDays(currentWeekOffset);
+            const firstDay = weekDays[0];
+            const lastDay = weekDays[6];
+            
+            const rangeStr = `${firstDay.toLocaleDateString('it-IT', {day: 'numeric', month: 'short'})} - ${lastDay.toLocaleDateString('it-IT', {day: 'numeric', month: 'short', year: 'numeric'})}`;
+            document.getElementById('week-range-label').innerText = rangeStr;
+            document.getElementById('current-date-label').innerText = new Date().toLocaleDateString('it-IT', {weekday: 'long', day: 'numeric', month: 'long'});
+
+            const gridContainer = document.getElementById('calendar-grid');
+            gridContainer.innerHTML = '';
+
+            const todayKey = getFormattedDate(new Date());
+
+            weekDays.forEach(day => {
+                const dayKey = getFormattedDate(day);
+                const isToday = dayKey === todayKey;
+                const dayMeals = appData.meals[dayKey] || {};
+                
+                const hasLunch = dayMeals.lunch && dayMeals.lunch.name && dayMeals.lunch.name.trim() !== '';
+                const hasDinner = dayMeals.dinner && dayMeals.dinner.name && dayMeals.dinner.name.trim() !== '';
+
+                const dayCard = document.createElement('div');
+                dayCard.className = `bg-white rounded-2xl shadow-sm border ${isToday ? 'border-terracotta-500 ring-2 ring-terracotta-500/20' : 'border-slate-200/80'} flex flex-col overflow-hidden`;
+
+                let html = `
+                    <div class="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider ${isToday ? 'text-terracotta-600' : 'text-slate-500'}">${day.toLocaleDateString('it-IT', {weekday: 'short'})}</span>
+                            <h4 class="text-base font-extrabold text-navy-900">${day.toLocaleDateString('it-IT', {day: 'numeric', month: 'short'})}</h4>
+                        </div>
+                        ${isToday ? '<span class="text-[10px] bg-terracotta-100 text-terracotta-700 font-bold px-2 py-0.5 rounded-full">Oggi</span>' : ''}
+                    </div>
+                    <div class="p-3 flex-1 flex flex-col gap-3">
+                `;
+
+                // SMART HIDING: If lunch is NOT present, we completely omit rendering the lunch block unless owner clicks to add
+                if (hasLunch) {
+                    html += `
+                        <div onclick="openMealModal('${dayKey}', 'lunch')" class="group relative bg-amber-50/60 hover:bg-amber-50 border border-amber-200/60 rounded-xl p-3 cursor-pointer transition">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-lg">${dayMeals.lunch.emoji || '☀️'}</span>
+                                    <div>
+                                        <span class="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">Pranzo</span>
+                                        <h5 class="text-xs font-bold text-navy-900 line-clamp-1">${escapeHtml(dayMeals.lunch.name)}</h5>
+                                    </div>
+                                </div>
+                            </div>
+                            ${dayMeals.lunch.notes ? `<p class="text-[11px] text-slate-500 mt-1 line-clamp-1 italic">${escapeHtml(dayMeals.lunch.notes)}</p>` : ''}
+                        </div>
+                    `;
+                } else {
+                    // Only show add lunch button if user is owner
+                    if (currentUserRole === 'owner') {
+                        html += `
+                            <button onclick="openMealModal('${dayKey}', 'lunch')" class="w-full py-2 border border-dashed border-slate-200 hover:border-terracotta-400 hover:bg-terracotta-50/30 rounded-xl text-slate-400 hover:text-terracotta-600 text-xs font-medium transition flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-plus text-[10px]"></i> Aggiungi pranzo
+                            </button>
+                        `;
+                    }
+                    // If guest and no lunch, nothing is shown for lunch, keeping the calendar super clean!
+                }
+
+                // DINNER SECTION
+                if (hasDinner) {
+                    html += `
+                        <div onclick="openMealModal('${dayKey}', 'dinner')" class="group relative bg-navy-50/70 hover:bg-navy-50 border border-navy-100 rounded-xl p-3 cursor-pointer transition">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-lg">${dayMeals.dinner.emoji || '🌙'}</span>
+                                    <div>
+                                        <span class="text-[10px] font-bold text-navy-600 uppercase tracking-wider block">Cena</span>
+                                        <h5 class="text-xs font-bold text-navy-900 line-clamp-1">${escapeHtml(dayMeals.dinner.name)}</h5>
+                                    </div>
+                                </div>
+                            </div>
+                            ${dayMeals.dinner.notes ? `<p class="text-[11px] text-slate-500 mt-1 line-clamp-1 italic">${escapeHtml(dayMeals.dinner.notes)}</p>` : ''}
+                        </div>
+                    `;
+                } else {
+                    if (currentUserRole === 'owner') {
+                        html += `
+                            <button onclick="openMealModal('${dayKey}', 'dinner')" class="w-full py-2 border border-dashed border-slate-200 hover:border-navy-400 hover:bg-navy-50/50 rounded-xl text-slate-400 hover:text-navy-800 text-xs font-medium transition flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-plus text-[10px]"></i> Aggiungi cena
+                            </button>
+                        `;
+                    } else {
+                        html += `
+                            <div class="py-2 text-center text-[11px] text-slate-400 italic">Nessuna cena programmata</div>
+                        `;
+                    }
+                }
+
+                html += `
+                    </div>
+                    <div class="px-4 py-2.5 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
+                        <button onclick="jumpToMemo('${dayKey}')" class="text-xs text-slate-600 hover:text-terracotta-600 font-medium flex items-center gap-1 transition">
+                            <i class="fa-regular fa-note-sticky text-terracotta-600"></i> Vai ai Memo
+                        </button>
+                        <span class="text-[10px] text-slate-400">${getMemoCountBadge(dayKey)}</span>
+                    </div>
+                `;
+
+                dayCard.innerHTML = html;
+                gridContainer.appendChild(dayCard);
+            });
+        }
+
+        function getMemoCountBadge(dayKey) {
+            const memo = appData.memos[dayKey];
+            if (!memo) return '0 note';
+            const total = (memo.preps?.length || 0) + (memo.groceries?.length || 0);
+            return total === 0 ? '0 note' : `${total} memo`;
+        }
+
+        // --- Meal Modal ---
+        function openMealModal(dayKey, type) {
+            if (currentUserRole === 'guest') {
+                showToast('Gli ospiti non possono modificare il calendario. Puoi però aggiungere note e spesa!', 'error');
+                return;
+            }
+
+            document.getElementById('meal-day-key').value = dayKey;
+            document.getElementById('meal-type').value = type;
+
+            const dayMeals = appData.meals[dayKey] || {};
+            const currentMeal = dayMeals[type] || { name: '', emoji: type === 'lunch' ? '☀️' : '🌙', notes: '' };
+
+            document.getElementById('meal-name-input').value = currentMeal.name || '';
+            document.getElementById('meal-emoji-input').value = currentMeal.emoji || (type === 'lunch' ? '☀️' : '🌙');
+            document.getElementById('meal-notes-input').value = currentMeal.notes || '';
+
+            const titleLabel = type === 'lunch' ? 'Pranzo' : 'Cena';
+            const dateObj = new Date(dayKey);
+            document.getElementById('modal-meal-title').innerText = `${titleLabel} del ${dateObj.toLocaleDateString('it-IT', {day: 'numeric', month: 'long'})}`;
+            document.getElementById('modal-meal-subtitle').innerText = type === 'lunch' ? 'Gestisci il programma del pranzo' : 'Gestisci il programma della cena';
+            document.getElementById('modal-meal-emoji-preview').innerText = currentMeal.emoji || '🍽️';
+
+            const deleteBtn = document.getElementById('meal-delete-btn');
+            if (currentMeal.name) {
+                deleteBtn.classList.remove('hidden');
+            } else {
+                deleteBtn.classList.add('hidden');
+            }
+
+            document.getElementById('meal-modal').classList.remove('hidden');
+        }
+
+        function closeMealModal() {
+            document.getElementById('meal-modal').classList.add('hidden');
+        }
+
+        function saveMeal(event) {
+            event.preventDefault();
+            const dayKey = document.getElementById('meal-day-key').value;
+            const type = document.getElementById('meal-type').value;
+            const name = document.getElementById('meal-name-input').value.trim();
+            const emoji = document.getElementById('meal-emoji-input').value.trim() || (type === 'lunch' ? '☀️' : '🌙');
+            const notes = document.getElementById('meal-notes-input').value.trim();
+
+            if (!appData.meals[dayKey]) {
+                appData.meals[dayKey] = {};
+            }
+
+            if (!name) {
+                delete appData.meals[dayKey][type];
+            } else {
+                appData.meals[dayKey][type] = { name, emoji, notes };
+            }
+
+            if (Object.keys(appData.meals[dayKey]).length === 0) {
+                delete appData.meals[dayKey];
+            }
+
+            addNotification('Calendario aggiornato', `${currentUserName} ha modificato il ${type === 'lunch' ? 'pranzo' : 'cena'}: ${name || 'Nessuno'}`);
+            saveStorage();
+            closeMealModal();
+            renderCalendar();
+            showToast('Pasto salvato con successo! 🍽️', 'success');
+        }
+
+        function removeMeal() {
+            const dayKey = document.getElementById('meal-day-key').value;
+            const type = document.getElementById('meal-type').value;
+
+            if (appData.meals[dayKey]) {
+                delete appData.meals[dayKey][type];
+                if (Object.keys(appData.meals[dayKey]).length === 0) {
+                    delete appData.meals[dayKey];
+                }
+            }
+
+            saveStorage();
+            closeMealModal();
+            renderCalendar();
+            showToast('Pasto rimosso dal calendario.', 'info');
+        }
+
+        // --- Memos & Groceries View ---
+        function jumpToMemo(dayKey) {
+            selectedMemoDateKey = dayKey;
+            switchTab('memos');
+        }
+
+        function renderMemoView() {
+            const daySelectorContainer = document.getElementById('memo-day-selector');
+            daySelectorContainer.innerHTML = '';
+
+            const today = new Date();
+            for (let i = -3; i <= 10; i++) {
+                const d = new Date(today);
+                d.setDate(today.getDate() + i);
+                const dKey = getFormattedDate(d);
+                const isSelected = dKey === selectedMemoDateKey;
+
+                const pill = document.createElement('button');
+                pill.onclick = () => {
+                    selectedMemoDateKey = dKey;
+                    renderMemoView();
+                };
+                pill.className = `px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition flex flex-col items-center gap-0.5 ${isSelected ? 'bg-terracotta-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`;
+                pill.innerHTML = `
+                    <span class="uppercase text-[10px] ${isSelected ? 'text-terracotta-100' : 'text-slate-400'}">${d.toLocaleDateString('it-IT', {weekday: 'short'})}</span>
+                    <span class="text-sm font-bold">${d.getDate()} ${d.toLocaleDateString('it-IT', {month: 'short'})}</span>
+                `;
+                daySelectorContainer.appendChild(pill);
+            }
+
+            const selectedDateObj = new Date(selectedMemoDateKey);
+            document.getElementById('memo-date-badge').innerText = selectedDateObj.toLocaleDateString('it-IT', {weekday: 'long', day: 'numeric', month: 'long'});
+
+            if (!appData.memos[selectedMemoDateKey]) {
+                appData.memos[selectedMemoDateKey] = { preps: [], groceries: [] };
+            }
+
+            const currentMemo = appData.memos[selectedMemoDateKey];
+
+            // Render Preps
+            const prepContainer = document.getElementById('prep-list-container');
+            prepContainer.innerHTML = '';
+            if (!currentMemo.preps || currentMemo.preps.length === 0) {
+                prepContainer.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
+                        <i class="fa-solid fa-mug-hot text-3xl mb-2 text-slate-300"></i>
+                        <p class="text-xs">Nessuna preparazione annotata per questo giorno.</p>
+                    </div>
+                `;
+            } else {
+                currentMemo.preps.forEach((item) => {
+                    const row = document.createElement('div');
+                    row.className = `flex items-center justify-between p-3 rounded-xl border transition ${item.completed ? 'bg-slate-50 border-slate-200 opacity-60 line-through' : 'bg-white border-slate-100 shadow-sm hover:border-slate-200'}`;
+                    row.innerHTML = `
+                        <label class="flex items-center gap-3 cursor-pointer flex-1 mr-2">
+                            <input type="checkbox" ${item.completed ? 'checked' : ''} onchange="toggleMemoItem('${selectedMemoDateKey}', 'prep', '${item.id}')" class="w-4 h-4 rounded text-terracotta-600 focus:ring-terracotta-500 cursor-pointer">
+                            <span class="text-sm ${item.completed ? 'text-slate-400' : 'text-navy-900 font-medium'}">${escapeHtml(item.text)}</span>
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">${escapeHtml(item.author || 'Utente')}</span>
+                            <button onclick="deleteMemoItem('${selectedMemoDateKey}', 'prep', '${item.id}')" class="text-slate-400 hover:text-rose-600 p-1 transition"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                        </div>
+                    `;
+                    prepContainer.appendChild(row);
+                });
+            }
+
+            // Render Groceries
+            const groceryContainer = document.getElementById('grocery-list-container');
+            groceryContainer.innerHTML = '';
+            if (!currentMemo.groceries || currentMemo.groceries.length === 0) {
+                groceryContainer.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
+                        <i class="fa-solid fa-basket-shopping text-3xl mb-2 text-slate-300"></i>
+                        <p class="text-xs">Nessuna spesa inserita per questo giorno.</p>
+                    </div>
+                `;
+            } else {
+                currentMemo.groceries.forEach((item) => {
+                    const row = document.createElement('div');
+                    row.className = `flex items-center justify-between p-3 rounded-xl border transition ${item.completed ? 'bg-slate-50 border-slate-200 opacity-60 line-through' : 'bg-white border-slate-100 shadow-sm hover:border-slate-200'}`;
+                    row.innerHTML = `
+                        <label class="flex items-center gap-3 cursor-pointer flex-1 mr-2">
+                            <input type="checkbox" ${item.completed ? 'checked' : ''} onchange="toggleMemoItem('${selectedMemoDateKey}', 'grocery', '${item.id}')" class="w-4 h-4 rounded text-terracotta-600 focus:ring-terracotta-500 cursor-pointer">
+                            <span class="text-sm ${item.completed ? 'text-slate-400' : 'text-navy-900 font-medium'}">${escapeHtml(item.text)}</span>
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">${escapeHtml(item.author || 'Utente')}</span>
+                            <button onclick="deleteMemoItem('${selectedMemoDateKey}', 'grocery', '${item.id}')" class="text-slate-400 hover:text-rose-600 p-1 transition"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                        </div>
+                    `;
+                    groceryContainer.appendChild(row);
+                });
+            }
+        }
+
+        function addMemoItem(event, type) {
+            event.preventDefault();
+            const inputId = type === 'prep' ? 'new-prep-input' : 'new-grocery-input';
+            const input = document.getElementById(inputId);
+            const text = input.value.trim();
+
+            if (!text) return;
+
+            if (!appData.memos[selectedMemoDateKey]) {
+                appData.memos[selectedMemoDateKey] = { preps: [], groceries: [] };
+            }
+
+            const newItem = {
+                id: Date.now().toString(),
+                text: text,
+                completed: false,
+                author: currentUserName
+            };
+
+            if (type === 'prep') {
+                appData.memos[selectedMemoDateKey].preps.push(newItem);
+                addNotification('Nuovo memo preparazione', `${currentUserName} ha aggiunto: "${text}"`);
+            } else {
+                appData.memos[selectedMemoDateKey].groceries.push(newItem);
+                addNotification('Nuova compresa', `${currentUserName} ha aggiunto alla spesa: "${text}"`);
+            }
+
+            input.value = '';
+            saveStorage();
+            renderMemoView();
+            showToast('Elemento aggiunto con successo! 📝', 'success');
+        }
+
+        function toggleMemoItem(dayKey, type, itemId) {
+            const list = type === 'prep' ? appData.memos[dayKey]?.preps : appData.memos[dayKey]?.groceries;
+            if (!list) return;
+
+            const item = list.find(i => i.id === itemId);
+            if (item) {
+                item.completed = !item.completed;
+                saveStorage();
+                renderMemoView();
+            }
+        }
+
+        function deleteMemoItem(dayKey, type, itemId) {
+            const memo = appData.memos[dayKey];
+            if (!memo) return;
+
+            if (type === 'prep') {
+                memo.preps = memo.preps.filter(i => i.id !== itemId);
+            } else {
+                memo.groceries = memo.groceries.filter(i => i.id !== itemId);
+            }
+
+            saveStorage();
+            renderMemoView();
+        }
+
+        function clearCompletedGroceries() {
+            const memo = appData.memos[selectedMemoDateKey];
+            if (!memo) return;
+            memo.groceries = memo.groceries.filter(i => !i.completed);
+            saveStorage();
+            renderMemoView();
+            showToast('Elementi spuntati rimossi.', 'info');
+        }
+
+        // --- Notifications & Browser Push Simulation ---
+        function toggleNotificationPanel() {
+            const panel = document.getElementById('notification-panel');
+            panel.classList.toggle('hidden');
+            if (!panel.classList.contains('hidden')) {
+                renderNotificationsList();
+            }
+        }
+
+        function addNotification(title, text) {
+            const newNotif = {
+                id: Date.now().toString(),
+                title: title,
+                text: text,
+                time: 'Adesso',
+                read: false
+            };
+            appData.notifications.unshift(newNotif);
+            if (appData.notifications.length > 25) appData.notifications.pop();
+            saveStorage();
+            showToast(title + ': ' + text, 'info');
+
+            // Trigger Browser Notification API if permitted
+            if (window.Notification && Notification.permission === "granted") {
+                new Notification(title, { body: text, icon: 'https://placehold.co/192x192/0b192c/ffffff?text=🍽️' });
+            }
+        }
+
+        function updateNotificationBadge() {
+            const unreadCount = appData.notifications.filter(n => !n.read).length;
+            const badge = document.getElementById('notif-badge');
+            if (unreadCount > 0) {
+                badge.innerText = unreadCount;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function renderNotificationsList() {
+            const listContainer = document.getElementById('notification-list');
+            listContainer.innerHTML = '';
+
+            if (!appData.notifications || appData.notifications.length === 0) {
+                listContainer.innerHTML = `<div class="p-6 text-center text-xs text-slate-400">Nessuna notifica recente</div>`;
+                return;
+            }
+
+            appData.notifications.forEach(n => {
+                const item = document.createElement('div');
+                item.className = `p-3.5 hover:bg-slate-50 transition flex items-start gap-3 ${n.read ? 'opacity-60' : 'bg-amber-50/30'}`;
+                item.innerHTML = `
+                    <div class="w-8 h-8 rounded-xl bg-terracotta-100 text-terracotta-700 flex items-center justify-center text-xs shrink-0 mt-0.5">
+                        <i class="fa-solid fa-bell"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h5 class="text-xs font-bold text-navy-900">${escapeHtml(n.title)}</h5>
+                        <p class="text-xs text-slate-600 truncate">${escapeHtml(n.text)}</p>
+                        <span class="text-[10px] text-slate-400 mt-1 block">${n.time}</span>
+                    </div>
+                `;
+                listContainer.appendChild(item);
+            });
+        }
+
+        function clearNotifications() {
+            appData.notifications.forEach(n => n.read = true);
+            saveStorage();
+            updateNotificationBadge();
+            renderNotificationsList();
+        }
+
+        function requestNotificationPermission() {
+            if (window.Notification && Notification.permission !== "granted" && Notification.permission !== "denied") {
+                Notification.requestPermission();
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bgCol = 'bg-navy-900 text-white';
+            let icon = 'fa-circle-check text-emerald-400';
+            if (type === 'error') {
+                bgCol = 'bg-rose-900 text-white';
+                icon = 'fa-triangle-exclamation text-amber-300';
+            } else if (type === 'info') {
+                bgCol = 'bg-navy-800 text-white';
+                icon = 'fa-circle-info text-sky-300';
+            }
+
+            toast.className = `${bgCol} px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 transform translate-y-2 opacity-0 transition-all duration-300 pointer-events-auto text-xs font-medium`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-base shrink-0"></i><span class="flex-1">${escapeHtml(message)}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        window.onload = function() {
+            initStorage();
+            requestNotificationPermission();
+            checkExistingAuth();
+            switchTab('calendar');
+        };
+    </script>
+</body>
+</html>
