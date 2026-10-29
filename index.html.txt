@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>La Preziosina | Menu & Memo</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Preziosina">
+    <link rel="apple-touch-icon" href="icon-192x192.png">
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --color-navy: #1B365D;
+            --color-terracotta: #EA5B39;
+            --color-background: #F4F7F6;
+            --color-text: #333;
+            --color-card-bg: #FFFFFF;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body { background-color: var(--color-background); color: var(--color-text); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+        /* Header */
+        header { background: var(--color-navy); color: white; padding: 1rem; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 10; }
+        header h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: 0.5px; }
+        
+        /* Auth Button */
+        #auth-btn { position: absolute; top: 1rem; right: 1rem; background: rgba(255,255,255,0.1); color: white; border: none; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.8rem; cursor: pointer; }
+        #auth-btn.is-admin { background: var(--color-terracotta); }
+
+        /* Selector Settimana */
+        #week-selector { display: flex; justify-content: space-around; align-items: center; padding: 0.8rem; background: var(--color-navy); color: white; }
+        #week-selector button { background: none; border: none; color: white; font-size: 1.2rem; padding: 0 1rem; cursor: pointer; }
+        #current-week-label { font-weight: 600; font-size: 0.9rem; }
+
+        /* Main Content Area (Flex layout per occupare tutto lo spazio) */
+        #app-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* Calendario Giorni (Carousel orizzontale) */
+        #days-container { display: flex; overflow-x: auto; padding: 1rem; gap: 1rem; scroll-snap-type: x mandatory; scroll-behavior: smooth; padding-bottom: 1.5rem; }
+        #days-container::-webkit-scrollbar { display: none; }
+        
+        .day-card { scroll-snap-align: start; flex: 0 0 85%; background: var(--color-card-bg); border-radius: 16px; padding: 1.2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #EEE; opacity: 0.5; transition: opacity 0.3s; position: relative; }
+        .day-card.active { opacity: 1; }
+        .day-card.active::after { content: ''; position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); width: 10px; height: 10px; background: var(--color-terracotta); border-radius: 50%; }
+        
+        .day-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #F0F0F0; padding-bottom: 0.8rem; margin-bottom: 1rem; }
+        .day-name { font-weight: 800; font-size: 1.1rem; color: var(--color-navy); }
+        .day-date { color: #888; font-size: 0.9rem; }
+
+        .meal-slot { margin-bottom: 1rem; position: relative; min-height: 50px; }
+        .meal-slot h4 { font-size: 0.75rem; text-transform: uppercase; color: #AAA; letter-spacing: 1px; margin-bottom: 0.4rem; }
+        .meal-content { font-size: 1rem; font-weight: 600; min-height: 24px; }
+        
+        /* Admin Edit Button */
+        .edit-meal-btn { position: absolute; top: 0; right: 0; background: none; border: none; color: #DDD; font-size: 0.8rem; cursor: pointer; display: none; }
+        .admin-controls .edit-meal-btn { display: block; }
+
+        /* Sezione Memo Giornalieri */
+        #memo-section { flex: 1; background: var(--color-background); border-top-left-radius: 24px; border-top-right-radius: 24px; padding: 1.5rem; display: flex; flex-direction: column; box-shadow: inset 0 5px 20px rgba(0,0,0,0.03); }
+        #memo-tabs { display: flex; gap: 1rem; margin-bottom: 1rem; }
+        .memo-tab-btn { flex: 1; background: none; border: none; padding: 0.5rem; color: #999; font-weight: 600; border-bottom: 3px solid transparent; cursor: pointer; font-size: 0.9rem; }
+        .memo-tab-btn.active { color: var(--color-terracotta); border-bottom: 3px solid var(--color-terracotta); }
+
+        #memo-list { flex: 1; overflow-y: auto; padding-right: 0.5rem; }
+        #memo-list::-webkit-scrollbar { width: 6px; }
+        #memo-list::-webkit-scrollbar-thumb { background-color: #DDD; border-radius: 3px; }
+
+        .memo-item { background: white; padding: 0.8rem; border-radius: 8px; margin-bottom: 0.8rem; display: flex; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.03); animation: slideIn 0.3s ease-out; }
+        .memo-item.completato { opacity: 0.5; text-decoration: line-through; }
+        .memo-checkbox { margin-right: 1rem; cursor: pointer; }
+        .memo-text { flex: 1; font-size: 0.95rem; line-height: 1.4; word-break: break-word; }
+        .delete-memo-btn { background: none; border: none; color: #FF4444; font-size: 1.2rem; cursor: pointer; padding: 0 0.5rem; }
+
+        /* Input Area Fixed Bottom */
+        #memo-input-area { background: white; padding: 1rem; display: flex; gap: 0.5rem; border-top: 1px solid #EEE; }
+        #new-memo-input { flex: 1; padding: 0.8rem; border: 1px solid #DDD; border-radius: 25px; outline: none; font-size: 0.95rem; }
+        #add-memo-btn { background: var(--color-navy); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; font-size: 1.5rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+        /* LoadingOverlay */
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); display: flex; justify-content: center; align-items: center; z-index: 100; display: none; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--color-terracotta); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes slideIn { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>📅 LA PREZIOSINA</h1>
+        <button id="auth-btn">Login Admin</button>
+    </header>
+
+    <div id="week-selector">
+        <button id="prev-week">&lt;</button>
+        <div id="current-week-label">Caricamento...</div>
+        <button id="next-week">&gt;</button>
+    </div>
+
+    <div id="app-container">
+        <div id="days-container">
+            <!-- I giorni saranno generati qui via JS -->
+        </div>
+
+        <div id="memo-section">
+            <div id="memo-tabs">
+                <button class="memo-tab-btn active" data-tipo="spesa">🛒 Da Comprare</button>
+                <button class="memo-tab-btn" data-tipo="prep">🔪 Preparazioni</button>
+            </div>
+            <div id="memo-list">
+                <!-- I memo saranno generati qui via JS -->
+            </div>
+            <div id="memo-input-area">
+                <input type="text" id="new-memo-input" placeholder="Aggiungi un elemento...">
+                <button id="add-memo-btn">+</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading-overlay"><div class="loader"></div></div>
+
+    <script>
+        // === CONFIGURAZIONE SUPABASE ===
+        const SUPABASE_URL = 'https://cvyrugwtpmbhnogifyyq.supabase.co/rest/v1/';
+        const SUPABASE_ANON_KEY = 'sb_publishable_tg2bASqJPMCdyZbGmGOsWA_c3xuplRL';
+        // ===============================
+
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // --- Stato Globale ---
+        let currentMonday = getStartOfWeek(new Date());
+        let selectedDate = new Date(); // Oggi
+        let isAdmin = false;
+        let currentAdminId = null; // Da impostare dopo il login
+        let currentMemoTab = 'spesa'; // 'spesa' o 'prep'
+        let weekDataCache = {}; // Cache per i pasti della settimana
+        
+        // --- Inizializzazione ---
+        async function init() {
+            // 1. Controlla se l'utente è loggato (Admin)
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                currentAdminId = session.user.id;
+                isAdmin = true;
+                document.getElementById('auth-btn').innerText = 'Logout Admin';
+                document.getElementById('auth-btn').classList.add('is-admin');
+                document.body.classList.add('admin-controls');
+            } else {
+                isAdmin = false;
+                currentAdminId = null;
+                document.getElementById('auth-btn').innerText = 'Login Admin';
+                document.getElementById('auth-btn').classList.remove('is-admin');
+                document.body.classList.remove('admin-controls');
+            }
+
+            // 2. Carica i dati
+            await renderWeekSelector();
+            await loadWeekMenuData();
+            renderCalendarDays();
+            await loadMemosForSelectedDate();
+
+            // 3. Setup Realtime Subscriptions
+            supabase.channel('public:menu').on('postgres_changes', { event: '*', schema: 'public', table: 'menu' }, (payload) => {
+                // Quando il menu cambia, ricarica la cache e aggiorna la UI
+                loadWeekMenuData().then(() => {
+                     // Aggiorna solo la card attiva se necessario
+                     updateActiveDayCardUI();
+                });
+            }).subscribe();
+
+            supabase.channel('public:memos').on('postgres_changes', { event: '*', schema: 'public', table: 'memos' }, (payload) => {
+                // Quando un memo cambia, ricarica la lista solo se è il tab corrente
+                loadMemosForSelectedDate();
+            }).subscribe();
+        }
+
+        // --- UTILITIES ---
+        function getStartOfWeek(date) {
+            const d = new Date(date);
+            const day = d.getDay(); // 0=Domenica, 1=Lunedi
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Ajust per lunedi
+            return new Date(d.setDate(diff));
+        }
+        function formatDateToString(date) { return date.toISOString().split('T')[0]; }
+        function addDays(date, days) { const result = new Date(date); result.setDate(result.getDate() + days); return result; }
+        function isToday(date) { const today = new Date(); return date.toDateString() === today.toDateString(); }
+
+        // === UI RENDER LOGIC ===
+
+        async function renderWeekSelector() {
+            const sunday = addDays(currentMonday, 6);
+            const label = `${currentMonday.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })} - ${sunday.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}`;
+            document.getElementById('current-week-label').innerText = label;
+        }
+
+        // --- Data Fetching ---
+
+        async function loadWeekMenuData() {
+            const startDateStr = formatDateToString(currentMonday);
+            const endDateStr = formatDateToString(addDays(currentMonday, 6));
+
+            showLoading();
+            const { data, error } = await supabase
+                .from('menu')
+                .select('*')
+                .gte('data', startDateStr)
+                .lte('data', endDateStr);
+            hideLoading();
+
+            if (error) { console.error('Errore caricamento menu:', error); return; }
+
+            // Resetta Cache e riempi
+            weekDataCache = {};
+            data.forEach(item => {
+                weekDataCache[item.data] = weekDataCache[item.data] || {};
+                weekDataCache[item.data][item.tipo] = item;
+            });
+        }
+
+        function renderCalendarDays() {
+            const container = document.getElementById('days-container');
+            container.innerHTML = ''; // Pulisci
+
+            for (let i = 0; i < 7; i++) {
+                const dayDate = addDays(currentMonday, i);
+                const dayDateStr = formatDateToString(dayDate);
+                const dayName = dayDate.toLocaleDateString('it-IT', { weekday: 'short' }).toUpperCase();
+                const dayNum = dayDate.getDate();
+
+                const dayMeals = weekDataCache[dayDateStr] || {};
+                const lunchMeal = dayMeals['pranzo'];
+                const dinnerMeal = dayMeals['cena'];
+
+                const card = document.createElement('div');
+                card.className = `day-card ${formatDateToString(selectedDate) === dayDateStr ? 'active' : ''}`;
+                card.dataset.date = dayDateStr;
+                
+                // Struttura Card
+                let html = `
+                    <div class="day-header">
+                        <span class="day-name">${dayName}</span>
+                        <span class="day-date">${dayNum}</span>
+                    </div>
+                `;
+
+                // LOGICA: Se il pranzo non c'è, nascondiamo lo slot.
+                if (lunchMeal) {
+                    html += `
+                    <div class="meal-slot lunch" data-tipo="pranzo" data-id="${lunchMeal.id}" data-piatto="${lunchMeal.piatto}">
+                         <h4>Pranzo</h4>
+                         <div class="meal-content">${lunchMeal.piatto} ${lunchMeal.emoji || ''}</div>
+                         ${isAdmin ? '<button class="edit-meal-btn">✎ Modifica</button>' : ''}
+                    </div>`;
+                }
+
+                // LOGICA: Se la cena non c'è, nascondiamo lo slot.
+                if (dinnerMeal) {
+                    html += `
+                    <div class="meal-slot dinner" data-tipo="cena" data-id="${dinnerMeal.id}" data-piatto="${dinnerMeal.piatto}">
+                         <h4>Cena</h4>
+                         <div class="meal-content">${dinnerMeal.piatto} ${dinnerMeal.emoji || ''}</div>
+                         ${isAdmin ? '<button class="edit-meal-btn">✎ Modifica</button>' : ''}
+                    </div>`;
+                }
+                
+                // LOGICA: Se il giorno è vuoto e non sei admin, non mostri nulla (opzionale, qui mostriamo i titoli)
+                if(!lunchMeal && !dinnerMeal && !isAdmin) {
+                    html += `<div class="meal-slot"><div class="meal-content" style="color:#DDD; font-weight:400;">Nessun pasto</div></div>`
+                }
+
+                // Aggiungi pulsante "Aggiungi" se admin e il giorno è vuoto
+                if (!lunchMeal && !dinnerMeal && isAdmin) {
+                     html += `<div class="meal-slot"><button class="edit-meal-btn" style="display:block; position:static; width:100%; text-align:center; padding: 1rem;">+ Aggiungi Menu</button></div>`
+                } else if (!lunchMeal && isAdmin) {
+                     html += `<div class="meal-slot"><button class="edit-meal-btn" style="display:block; position:static; width:100%; text-align:center; padding: 1rem;">+ Aggiungi Pranzo</button></div>`
+                } else if (!dinnerMeal && isAdmin) {
+                     html += `<div class="meal-slot"><button class="edit-meal-btn" style="display:block; position:static; width:100%; text-align:center; padding: 1rem;">+ Aggiungi Cena</button></div>`
+                }
+
+
+                card.innerHTML = html;
+
+                // Event Listener per selezionare il giorno
+                card.addEventListener('click', (e) => {
+                     if(e.target.classList.contains('edit-meal-btn')) {
+                          // Se clicchi sul pulsante modifica
+                          const mealSlot = e.target.closest('.meal-slot');
+                          if(mealSlot) {
+                              // Trova i dati
+                              const id = mealSlot.dataset.id; // Può essere undefined se vuoto
+                              const tipo = mealSlot.dataset.tipo; // 'pranzo' o 'cena'
+                              const piattoCorrente = mealSlot.dataset.piatto || '';
+                              editMealModal(dayDateStr, tipo, id, piattoCorrente);
+                          } else {
+                              // Probabilmente è il pulsante "+" nel giorno vuoto
+                              const dayCard = e.target.closest('.day-card');
+                              // Bisogna capire se è pranzo o cena vuoto. Logica semplice: aggiungi alla cena per ora
+                              editMealModal(dayDateStr, 'cena', undefined, '');
+                          }
+                          return;
+                     }
+
+                    // Seleziona il giorno
+                    selectedDate = dayDate;
+                    document.querySelectorAll('.day-card').forEach(c => c.classList.remove('active'));
+                    card.classList.add('active');
+                    loadMemosForSelectedDate();
+                });
+
+                container.appendChild(card);
+            }
+
+            // Scroll-snap al giorno corrente
+            setTimeout(() => {
+                const activeCard = document.querySelector('.day-card.active');
+                if (activeCard) activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }, 100);
+        }
+
+        function updateActiveDayCardUI() {
+             renderCalendarDays(); // Ricarica tutto per semplicità, è reattivo
+        }
+
+
+        // --- Memo Logic ---
+
+        document.querySelectorAll('.memo-tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.memo-tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentMemoTab = btn.dataset.tipo;
+                loadMemosForSelectedDate();
+            });
+        });
+
+        async function loadMemosForSelectedDate() {
+            const dateStr = formatDateToString(selectedDate);
+            showLoading();
+            const { data, error } = await supabase
+                .from('memos')
+                .select('*')
+                .eq('data', dateStr)
+                .eq('tipo', currentMemoTab)
+                .order('created_at', { ascending: true });
+            hideLoading();
+
+            if (error) { console.error('Errore memo:', error); return; }
+            
+            const listContainer = document.getElementById('memo-list');
+            listContainer.innerHTML = '';
+
+            if(data.length === 0) {
+                listContainer.innerHTML = '<div style="text-align:center; color:#CCC; padding:2rem;">Nessun memo</div>';
+                return;
+            }
+
+            data.forEach(memo => {
+                const item = document.createElement('div');
+                item.className = `memo-item ${memo.completato ? 'completato' : ''}`;
+                
+                let checkboxHtml = '';
+                if (currentMemoTab === 'spesa') {
+                    checkboxHtml = `<input type="checkbox" class="memo-checkbox" ${memo.completato ? 'checked' : ''}>`;
+                }
+
+                item.innerHTML = `
+                    ${checkboxHtml}
+                    <span class="memo-text">${memo.testo}</span>
+                    <button class="delete-memo-btn" data-id="${memo.id}">×</button>
+                `;
+
+                // Event Listeners per il memo
+                if (currentMemoTab === 'spesa') {
+                    item.querySelector('.memo-checkbox').addEventListener('change', (e) => {
+                        toggleMemoComplete(memo.id, e.target.checked);
+                    });
+                }
+                item.querySelector('.delete-memo-btn').addEventListener('click', (e) => {
+                     deleteMemo(memo.id);
+                });
+
+                listContainer.appendChild(item);
+            });
+            
+            // Scroll in basso per l'input
+            document.getElementById('memo-list').scrollTop = document.getElementById('memo-list').scrollHeight;
+        }
+
+        // --- Admin Functions (Menu Edit) ---
+
+        async function editMealModal(dateStr, tipo, mealId, piattoCorrente) {
+             const piatto = prompt(`Modifica ${tipo} del ${dateStr.split('-').reverse().join('/')}:`, piattoCorrente);
+             if (piatto === null) return; // Annullato
+
+             if(piatto === '' && mealId) {
+                  // Cancella il pasto se è vuoto
+                  if(confirm('Vuoi cancellare questo pasto?')) {
+                       showLoading();
+                       const { error } = await supabase.from('menu').delete().eq('id', mealId);
+                       hideLoading();
+                       if(error) alert('Errore cancellazione');
+                  }
+                  return;
+             }
+             
+             if(piatto === '') return; // Niente da salvare
+
+             showLoading();
+             let result;
+             if (mealId) {
+                  // Aggiorna
+                  result = await supabase.from('menu').update({ piatto: piatto, emoji: extractEmoji(piatto) }).eq('id', mealId);
+             } else {
+                  // Inserisci nuovo
+                  result = await supabase.from('menu').insert({ data: dateStr, tipo: tipo, piatto: piatto, emoji: extractEmoji(piatto) });
+             }
+             hideLoading();
+             if(result.error) alert('Errore salvataggio menu');
+        }
+
+        function extractEmoji(text) {
+             // Helper semplice per prendere la prima emoji trovata nel testo
+             const emojiRegex = /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/u;
+             const match = text.match(emojiRegex);
+             return match ? match[0] : '';
+        }
+
+        // --- Memo Actions (Global for Users) ---
+
+        document.getElementById('add-memo-btn').addEventListener('click', addNewMemo);
+        document.getElementById('new-memo-input').addEventListener('keypress', (e) => {
+             if(e.key === 'Enter') addNewMemo();
+        });
+
+        async function addNewMemo() {
+            const input = document.getElementById('new-memo-input');
+            const testo = input.value.trim();
+            if (!testo) return;
+
+            showLoading();
+            const { error } = await supabase
+                .from('memos')
+                .insert({ data: formatDateToString(selectedDate), tipo: currentMemoTab, testo: testo });
+            hideLoading();
+            if(error) alert('Errore aggiunta memo');
+            input.value = ''; // Pulisci input
+        }
+
+        async function toggleMemoComplete(id, completato) {
+             showLoading();
+             const { error } = await supabase.from('memos').update({ completato: completato }).eq('id', id);
+             hideLoading();
+             if(error) alert('Errore aggiornamento');
+        }
+
+        async function deleteMemo(id) {
+            if(!confirm('Eliminare questo elemento?')) return;
+            showLoading();
